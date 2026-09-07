@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Car OS Dashboard - Alcázar & Velocímetro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Exo+2:wght@600;800&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Teko:wght@600;700&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent-color: #38bdf8;
+      --accent-active: #0284c7;
+      --bg-dark: #090d16;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Chakra Petch', sans-serif;
+      background: var(--bg-dark);
+      color: #ffffff;
+    }
+
+    .bg-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 1;
+      transition: all 0.5s ease;
+    }
+
+    .car-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(9, 13, 22, 0.4);
+    }
+
+    .car-sidebar {
+      width: 90px;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--accent-color);
+      letter-spacing: 2px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .btn-car-icon {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-car-icon:active, .btn-car-icon.active {
+      background: var(--accent-active);
+      color: #ffffff;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 15px var(--accent-color);
+    }
+
+    .car-main {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .red-filter {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255, 0, 0, 0.25);
+      mix-blend-mode: multiply;
+      z-index: 3;
+      pointer-events: none;
+      display: none;
+    }
+
+    .clock-wrapper {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 1s ease;
+    }
+
+    .time-display {
+      display: flex;
+      align-items: baseline;
+      font-family: 'Share Tech Mono', monospace;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .digits {
+      font-size: 16vw;
+      letter-spacing: -2px;
+      text-shadow: 0 0 30px rgba(0,0,0,0.6);
+    }
+
+    .seconds {
+      font-size: 5vw;
+      color: #ef4444;
+      margin-left: 1vw;
+      font-weight: 500;
+    }
+
+    .analog-clock-container {
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .analog-clock-container.active {
+      display: flex;
+    }
+
+    #analog-canvas {
+      width: 35vw;
+      height: 35vw;
+      max-width: 400px;
+      max-height: 400px;
+      min-width: 240px;
+      min-height: 240px;
+      filter: drop-shadow(0 15px 30px rgba(0,0,0,0.8));
+    }
+
+    .date-display {
+      font-size: 2vw;
+      margin-top: 15px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+    }
+
+    .widgets-container {
+      display: flex;
+      gap: 20px;
+      margin-top: 25px;
+      z-index: 4;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .widget-badge {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.4vw;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 12px 24px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .widget-badge.active { display: flex; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active { display: flex; }
+
+    .panel {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      width: 90%;
+      max-width: 550px;
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .panel h2 {
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 10px;
+      color: var(--accent-color);
+    }
+
+    .section { margin-bottom: 20px; }
+    .section label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.95rem; color: #cbd5e1; }
+
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .color-btn {
+      height: 45px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+    }
+
+    .toggle-group { display: flex; justify-content: space-between; align-items: center; }
+
+    input[type="range"], input[type="file"], select {
+      width: 100%; padding: 12px; border-radius: 12px;
+      border: 1px solid #334155; background: #030712; color: white; outline: none;
+    }
+
+    .close-btn {
+      width: 100%; padding: 16px; background: var(--accent-active); border: none;
+      border-radius: 14px; color: white; font-weight: bold; font-size: 1.1rem;
+      cursor: pointer; margin-top: 15px;
+    }
+
+    @media (max-aspect-ratio: 1/1) {
+      .digits { font-size: 20vw; }
+      .date-display { font-size: 3.5vw; }
+      .widget-badge { font-size: 3vw; }
+      #analog-canvas { width: 55vw; height: 55vw; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-layer" id="bg-layer"></div>
+
+  <div class="car-container">
+    <div class="car-sidebar">
+      <div class="brand-logo">CAR</div>
+      <div class="sidebar-nav">
+        <button class="btn-car-icon" id="btn-toggle-clock" title="Cambiar Vista">🕒</button>
+        <button class="btn-car-icon" id="btn-night-mode" title="Modo Noche">🌙</button>
+        <button class="btn-car-icon" id="btn-audio" title="Audio Ambiente">🌧️</button>
+        <button class="btn-car-icon" id="btn-fullscreen" title="Pantalla Completa">⛶</button>
+      </div>
+      <button class="btn-car-icon" id="btn-settings" title="Ajustes">⚙</button>
+    </div>
+
+    <div class="car-main">
+      <div class="overlay" id="overlay"></div>
+      <div class="red-filter" id="red-filter"></div>
+
+      <div class="clock-wrapper" id="clock-wrapper">
+        <div class="time-display" id="digital-clock-container">
+          <span class="digits" id="time-main">00:00</span>
+          <span class="seconds" id="time-seconds">:00</span>
+        </div>
+
+        <div class="analog-clock-container" id="analog-clock-container">
+          <canvas id="analog-canvas" width="400" height="400"></canvas>
+        </div>
+
+        <div class="date-display" id="date-display">Cargando fecha...</div>
+      </div>
+
+      <div class="widgets-container">
+        <!-- Widget Clima Alcázar -->
+        <div class="widget-badge active" id="weather-display">
+          <span>📍</span>
+          <span id="weather-location">Alcázar de San Juan</span>
+          <span style="font-weight: bold; color: var(--accent-color);" id="weather-temp">--°C</span>
+        </div>
+
+        <!-- Widget Velocímetro -->
+        <div class="widget-badge active" id="speed-display">
+          <span>⚡</span>
+          <span id="speed-value" style="font-weight: bold; font-size: 1.8vw; color: var(--accent-color);">0</span>
+          <span style="font-size: 1vw; color: #94a3b8;">km/h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-settings">
+    <div class="panel">
+      <h2>Ajustes de Cuadro de Mandos</h2>
+
+      <div class="section">
+        <label for="clock-mode-select">Tipo de Reloj Principal</label>
+        <select id="clock-mode-select">
+          <option value="digital">Digital Dashboard</option>
+          <option value="analog">Analógico de Esfera</option>
+        </select>
+      </div>
+
+      <div class="section" id="section-digital-font">
+        <label for="digital-font-select">Fuente del Reloj Digital</label>
+        <select id="digital-font-select">
+          <option value="'Share Tech Mono', monospace">LCD Digital Segments (Share Tech Mono)</option>
+          <option value="'VT323', monospace">Retro Clock 7-Segment (VT323)</option>
+          <option value="'Orbitron', sans-serif">Cyber Automotive (Orbitron)</option>
+          <option value="'Teko', sans-serif">Sport Gauge Condensada (Teko)</option>
+          <option value="'Chakra Petch', sans-serif">HUD Display / Militar (Chakra Petch)</option>
+          <option value="'Exo 2', sans-serif">Clean Premium UI (Exo 2)</option>
+        </select>
+      </div>
+
+      <div class="section" id="section-analog-theme">
+        <label for="analog-style-select">Modelo de Reloj Analógico</label>
+        <select id="analog-style-select">
+          <option value="sport">Sport / Tacómetro (Deportivo)</option>
+          <option value="classic">Luxury Classic (Minimalista / Elegante)</option>
+          <option value="cyber">Cyber EV (Futurista / Eléctrico)</option>
+        </select>
+      </div>
+
+      <div class="section">
+        <label for="bg-type-select">Estilo de Fondo</label>
+        <select id="bg-type-select">
+          <option value="solid">Colores / Degradados</option>
+          <option value="unsplash">Imagen Dinámica HD</option>
+          <option value="custom">Subir imagen propia</option>
+        </select>
+      </div>
+
+      <div class="section" id="presets-section">
+        <label>Colores Predefinidos</label>
+        <div class="option-grid">
+          <button class="color-btn" style="background: #090d16;" data-bg="#090d16"></button>
+          <button class="color-btn" style="background: linear-gradient(135deg, #0f172a, #1e293b);" data-bg="linear-gradient(135deg, #0f172a, #1e293b)"></button>
+          <button class="color-btn" style="background: linear-gradient(135deg, #1e3c72, #2a5298);" data-bg="linear-gradient(135deg, #1e3c72, #2a5298)"></button>
+          <button class="color-btn" style="background: linear-gradient(135deg, #000428, #004e92);" data-bg="linear-gradient(135deg, #000428, #004e92)"></button>
+          <button class="color-btn" style="background: linear-gradient(135deg, #111827, #374151);" data-bg="linear-gradient(135deg, #111827, #374151)"></button>
+        </div>
+      </div>
+
+      <div class="section" id="custom-image-section" style="display: none;">
+        <label>Subir Imagen desde la Tablet</label>
+        <input type="file" id="image-upload" accept="image/*">
+      </div>
+
+      <div class="section">
+        <label for="color-theme-select">Tema de Color del Coche</label>
+        <select id="color-theme-select">
+          <option value="cyan">Cyan Electric (Azul)</option>
+          <option value="amber">Amber Dashboard (Naranja Coche Clásico)</option>
+          <option value="lime">Racing Green (Verde Lima)</option>
+        </select>
+      </div>
+
+      <div class="section">
+        <label>Brillo de Pantalla</label>
+        <input type="range" id="brightness-range" min="10" max="100" value="100">
+        <div class="toggle-group" style="margin-top: 15px;">
+          <label for="red-filter-toggle">Luz Roja de Conducción Nocturna</label>
+          <input type="checkbox" id="red-filter-toggle" style="width: auto; transform: scale(1.4);">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="toggle-group">
+          <label for="weather-toggle">Mostrar Widget del Clima</label>
+          <input type="checkbox" id="weather-toggle" checked style="width: auto; transform: scale(1.4);">
+        </div>
+      </div>
+
+      <button class="close-btn" id="btn-close">Guardar y Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    var timeMain = document.getElementById('time-main');
+    var timeSeconds = document.getElementById('time-seconds');
+    var digitalClockContainer = document.getElementById('digital-clock-container');
+    var analogClockContainer = document.getElementById('analog-clock-container');
+    var analogCanvas = document.getElementById('analog-canvas');
+    var ctxAnalog = analogCanvas.getContext('2d');
+
+    var dateDisplay = document.getElementById('date-display');
+    var bgLayer = document.getElementById('bg-layer');
+    var overlay = document.getElementById('overlay');
+    var redFilter = document.getElementById('red-filter');
+
+    var modalSettings = document.getElementById('modal-settings');
+    var btnSettings = document.getElementById('btn-settings');
+    var btnClose = document.getElementById('btn-close');
+    var btnFullscreen = document.getElementById('btn-fullscreen');
+    var btnNightMode = document.getElementById('btn-night-mode');
+    var btnAudio = document.getElementById('btn-audio');
+    var btnToggleClock = document.getElementById('btn-toggle-clock');
+
+    var clockModeSelect = document.getElementById('clock-mode-select');
+    var digitalFontSelect = document.getElementById('digital-font-select');
+    var analogStyleSelect = document.getElementById('analog-style-select');
+    var colorThemeSelect = document.getElementById('color-theme-select');
+    var brightnessRange = document.getElementById('brightness-range');
+    var redFilterToggle = document.getElementById('red-filter-toggle');
+
+    var bgTypeSelect = document.getElementById('bg-type-select');
+    var presetsSection = document.getElementById('presets-section');
+    var customImageSection = document.getElementById('custom-image-section');
+    var imageUpload = document.getElementById('image-upload');
+
+    var weatherToggle = document.getElementById('weather-toggle');
+    var weatherDisplay = document.getElementById('weather-display');
+    var weatherLocation = document.getElementById('weather-location');
+    var weatherTemp = document.getElementById('weather-temp');
+    var speedValue = document.getElementById('speed-value');
+
+    var isNightModeActive = false;
+    var isAudioPlaying = false;
+    var audioContext, rainNode;
+
+    var clockMode = localStorage.getItem('carClockMode') || 'digital';
+    var digitalFont = localStorage.getItem('carDigitalFont') || "'Share Tech Mono', monospace";
+    var analogStyle = localStorage.getItem('carAnalogStyle') || 'sport';
+    var colorTheme = localStorage.getItem('carColorTheme') || 'cyan';
+
+    var ALCAZAR_LAT = 39.3902;
+    var ALCAZAR_LON = -3.2073;
+
+    function applyColorTheme(theme) {
+      colorTheme = theme;
+      localStorage.setItem('carColorTheme', theme);
+      var root = document.documentElement;
+
+      if (theme === 'amber') {
+        root.style.setProperty('--accent-color', '#f97316');
+        root.style.setProperty('--accent-active', '#ea580c');
+      } else if (theme === 'lime') {
+        root.style.setProperty('--accent-color', '#84cc16');
+        root.style.setProperty('--accent-active', '#65a30d');
+      } else {
+        root.style.setProperty('--accent-color', '#38bdf8');
+        root.style.setProperty('--accent-active', '#0284c7');
+      }
+    }
+
+    function setClockMode(mode) {
+      clockMode = mode;
+      localStorage.setItem('carClockMode', mode);
+      clockModeSelect.value = mode;
+
+      if (mode === 'analog') {
+        digitalClockContainer.style.display = 'none';
+        analogClockContainer.classList.add('active');
+        document.getElementById('section-analog-theme').style.display = 'block';
+        document.getElementById('section-digital-font').style.display = 'none';
+      } else {
+        digitalClockContainer.style.display = 'flex';
+        analogClockContainer.classList.remove('active');
+        document.getElementById('section-analog-theme').style.display = 'none';
+        document.getElementById('section-digital-font').style.display = 'block';
+      }
+    }
+
+    function applyDigitalFont(font) {
+      digitalFont = font;
+      localStorage.setItem('carDigitalFont', font);
+      digitalClockContainer.style.fontFamily = font;
+      digitalFontSelect.value = font;
+    }
+
+    bgTypeSelect.addEventListener('change', function(e) {
+      var type = e.target.value;
+      presetsSection.style.display = type === 'solid' ? 'block' : 'none';
+      customImageSection.style.display = type === 'custom' ? 'block' : 'none';
+
+      if (type === 'unsplash') {
+        bgLayer.style.backgroundImage = "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80')";
+      }
+    });
+
+    document.querySelectorAll('#presets-section .color-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        bgLayer.style.backgroundImage = 'none';
+        bgLayer.style.background = e.target.getAttribute('data-bg');
+      });
+    });
+
+    imageUpload.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          bgLayer.style.backgroundImage = "url('" + evt.target.result + "')";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function drawAnalogClock(now) {
+      var width = analogCanvas.width;
+      var height = analogCanvas.height;
+      var radius = width / 2;
+      var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+
+      ctxAnalog.clearRect(0, 0, width, height);
+
+      var hours = now.getHours();
+      var minutes = now.getMinutes();
+      var seconds = now.getSeconds();
+      var millis = now.getMilliseconds();
+
+      if (analogStyle === 'sport') {
+        ctxAnalog.beginPath();
+        ctxAnalog.arc(radius, radius, radius - 8, 0, 2 * Math.PI);
+        ctxAnalog.fillStyle = '#0f172a';
+        ctxAnalog.fill();
+        ctxAnalog.lineWidth = 8;
+        ctxAnalog.strokeStyle = '#1e293b';
+        ctxAnalog.stroke();
+
+        ctxAnalog.beginPath();
+        ctxAnalog.arc(radius, radius, radius - 16, 0, 2 * Math.PI);
+        ctxAnalog.lineWidth = 3;
+        ctxAnalog.strokeStyle = accent;
+        ctxAnalog.stroke();
+
+        for (var i = 0; i < 60; i++) {
+          var minAng = i * Math.PI / 30;
+          ctxAnalog.save();
+          ctxAnalog.translate(radius, radius);
+          ctxAnalog.rotate(minAng);
+          ctxAnalog.beginPath();
+          if (i % 5 === 0) {
+            ctxAnalog.fillStyle = accent;
+            ctxAnalog.fillRect(-1.5, -radius + 22, 3, 10);
+          } else {
+            ctxAnalog.fillStyle = 'rgba(255,255,255,0.2)';
+            ctxAnalog.fillRect(-1, -radius + 22, 2, 5);
+          }
+          ctxAnalog.restore();
+        }
+
+        ctxAnalog.font = 'bold 20px "Chakra Petch", sans-serif';
+        ctxAnalog.textAlign = 'center';
+        ctxAnalog.textBaseline = 'middle';
+        ctxAnalog.fillStyle = '#ffffff';
+
+        for (var num = 1; num <= 12; num++) {
+          var ang = num * Math.PI / 6;
+          var numX = radius + (radius - 52) * Math.sin(ang);
+          var numY = radius - (radius - 52) * Math.cos(ang);
+          ctxAnalog.fillText(num.toString(), numX, numY);
+        }
+
+        drawHand(((hours % 12) + minutes / 60) * (Math.PI / 6), radius * 0.42, 7, '#ffffff');
+        drawHand((minutes + seconds / 60) * (Math.PI / 30), radius * 0.62, 4, accent);
+        drawHand((seconds + millis / 1000) * (Math.PI / 30), radius * 0.74, 2, '#ef4444');
+
+      } else if (analogStyle === 'classic') {
+        ctxAnalog.beginPath();
+        ctxAnalog.arc(radius, radius, radius - 10, 0, 2 * Math.PI);
+        ctxAnalog.fillStyle = 'rgba(15, 23, 42, 0.4)';
+        ctxAnalog.fill();
+        ctxAnalog.lineWidth = 2;
+        ctxAnalog.strokeStyle = '#475569';
+        ctxAnalog.stroke();
+
+        for (var num = 1; num <= 12; num++) {
+          var ang = num * Math.PI / 6;
+          ctxAnalog.save();
+          ctxAnalog.translate(radius, radius);
+          ctxAnalog.rotate(ang);
+          ctxAnalog.beginPath();
+          ctxAnalog.fillStyle = accent;
+          ctxAnalog.fillRect(-2, -radius + 18, 4, 12);
+          ctxAnalog.restore();
+        }
+
+        drawHand(((hours % 12) + minutes / 60) * (Math.PI / 6), radius * 0.45, 4, '#ffffff');
+        drawHand((minutes + seconds / 60) * (Math.PI / 30), radius * 0.68, 2, '#ffffff');
+        drawHand((seconds + millis / 1000) * (Math.PI / 30), radius * 0.75, 1, accent);
+
+      } else if (analogStyle === 'cyber') {
+        ctxAnalog.beginPath();
+        ctxAnalog.arc(radius, radius, radius - 12, 0, 2 * Math.PI);
+        ctxAnalog.lineWidth = 4;
+        ctxAnalog.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctxAnalog.stroke();
+
+        for (var i = 0; i < 12; i++) {
+          var ang = i * Math.PI / 6;
+          var x = radius + (radius - 25) * Math.sin(ang);
+          var y = radius - (radius - 25) * Math.cos(ang);
+          ctxAnalog.beginPath();
+          ctxAnalog.arc(x, y, 4, 0, 2 * Math.PI);
+          ctxAnalog.fillStyle = accent;
+          ctxAnalog.fill();
+        }
+
+        drawHand(((hours % 12) + minutes / 60) * (Math.PI / 6), radius * 0.40, 8, accent);
+        drawHand((minutes + seconds / 60) * (Math.PI / 30), radius * 0.65, 5, '#ffffff');
+        drawHand((seconds + millis / 1000) * (Math.PI / 30), radius * 0.78, 2, '#ef4444');
+      }
+
+      ctxAnalog.beginPath();
+      ctxAnalog.arc(radius, radius, 8, 0, 2 * Math.PI);
+      ctxAnalog.fillStyle = '#ef4444';
+      ctxAnalog.fill();
+    }
+
+    function drawHand(angle, length, width, color) {
+      var radius = analogCanvas.width / 2;
+      ctxAnalog.save();
+      ctxAnalog.beginPath();
+      ctxAnalog.lineWidth = width;
+      ctxAnalog.lineCap = "round";
+      ctxAnalog.strokeStyle = color;
+      ctxAnalog.moveTo(radius, radius);
+      ctxAnalog.lineTo(radius + length * Math.sin(angle), radius - length * Math.cos(angle));
+      ctxAnalog.stroke();
+      ctxAnalog.restore();
+    }
+
+    function renderLoop() {
+      var now = new Date();
+
+      if (clockMode === 'digital') {
+        var hours = String(now.getHours()).padStart(2, '0');
+        var minutes = String(now.getMinutes()).padStart(2, '0');
+        var seconds = String(now.getSeconds()).padStart(2, '0');
+
+        timeMain.textContent = hours + ':' + minutes;
+        timeSeconds.textContent = ':' + seconds;
+      } else {
+        drawAnalogClock(now);
+      }
+
+      var options = { weekday: 'long', day: 'numeric', month: 'long' };
+      dateDisplay.textContent = now.toLocaleDateString('es-ES', options);
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    async function fetchWeatherAlcazar() {
+      try {
+        var res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + ALCAZAR_LAT + '&longitude=' + ALCAZAR_LON + '&current_weather=true');
+        var data = await res.json();
+        
+        if (data.current_weather) {
+          weatherTemp.textContent = Math.round(data.current_weather.temperature) + '°C';
+          weatherLocation.textContent = "Alcázar de San Juan";
+        }
+      } catch(e) {
+        weatherLocation.textContent = "Alcázar (Sin Red)";
+        weatherTemp.textContent = "--°C";
+      }
+    }
+
+    function initSpeedometer() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(
+          function(position) {
+            var speedMPS = position.coords.speed;
+            if (speedMPS !== null && !isNaN(speedMPS) && speedMPS > 0) {
+              speedValue.textContent = Math.round(speedMPS * 3.6);
+            } else {
+              speedValue.textContent = "0";
+            }
+          },
+          function(error) {
+            speedValue.textContent = "0";
+          },
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+        );
+      } else {
+        speedValue.textContent = "0";
+      }
+    }
+
+    weatherToggle.addEventListener('change', function(e) {
+      if (e.target.checked) {
+        weatherDisplay.classList.add('active');
+        fetchWeatherAlcazar();
+      } else {
+        weatherDisplay.classList.remove('active');
+      }
+    });
+
+    btnToggleClock.addEventListener('click', function() {
+      setClockMode(clockMode === 'digital' ? 'analog' : 'digital');
+    });
+
+    clockModeSelect.addEventListener('change', function(e) { setClockMode(e.target.value); });
+    digitalFontSelect.addEventListener('change', function(e) { applyDigitalFont(e.target.value); });
+
+    analogStyleSelect.addEventListener('change', function(e) {
+      analogStyle = e.target.value;
+      localStorage.setItem('carAnalogStyle', analogStyle);
+    });
+
+    colorThemeSelect.addEventListener('change', function(e) { applyColorTheme(e.target.value); });
+
+    brightnessRange.addEventListener('input', function(e) {
+      var val = e.target.value;
+      var opacity = 1 - (val / 100);
+      overlay.style.background = 'rgba(0, 0, 0, ' + (opacity * 0.9 + 0.1) + ')';
+    });
+
+    redFilterToggle.addEventListener('change', function(e) {
+      redFilter.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    btnNightMode.addEventListener('click', function() {
+      isNightModeActive = !isNightModeActive;
+      btnNightMode.classList.toggle('active', isNightModeActive);
+      brightnessRange.value = isNightModeActive ? 20 : 100;
+      redFilterToggle.checked = isNightModeActive;
+      brightnessRange.dispatchEvent(new Event('input'));
+      redFilterToggle.dispatchEvent(new Event('change'));
+    });
+
+    btnAudio.addEventListener('click', function() {
+      if (isAudioPlaying) {
+        if (rainNode) rainNode.disconnect();
+        isAudioPlaying = false;
+        btnAudio.classList.remove('active');
+      } else {
+        startRainAudio();
+        isAudioPlaying = true;
+        btnAudio.classList.add('active');
+      }
+    });
+
+    function startRainAudio() {
+      try {
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioCtx();
+        var bufferSize = audioContext.sampleRate * 2;
+        var noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        var output = noiseBuffer.getChannelData(0);
+
+        for (var i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        var whiteNoise = audioContext.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        var filter = audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+
+        whiteNoise.connect(filter);
+        filter.connect(audioContext.destination);
+        whiteNoise.start();
+        rainNode = whiteNoise;
+      } catch(e) {}
+    }
+
+    btnFullscreen.addEventListener('click', function() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else if (document.exitFullscreen) document.exitFullscreen();
+    });
+
+    btnSettings.addEventListener('click', function() { modalSettings.classList.add('active'); });
+    btnClose.addEventListener('click', function() { modalSettings.classList.remove('active'); });
+
+    applyColorTheme(colorTheme);
+    applyDigitalFont(digitalFont);
+    colorThemeSelect.value = colorTheme;
+    analogStyleSelect.value = analogStyle;
+    setClockMode(clockMode);
+    
+    fetchWeatherAlcazar();
+    setInterval(fetchWeatherAlcazar, 15 * 60 * 1000);
+    initSpeedometer();
+
+    requestAnimationFrame(renderLoop);
+  </script>
+</body>
+</html>
